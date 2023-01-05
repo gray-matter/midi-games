@@ -5,6 +5,7 @@ from threading import Thread, Event
 from typing import Callable, Coroutine
 
 from mido import Message
+from simpleaudio import WaveObject
 
 from grid.pad_grid import PadGrid
 from midi.midi_controller import MidiController
@@ -27,11 +28,14 @@ class WhackAMole:
             asyncio.run(call())
 
         async def strokes_loop():
+            punch_sound = WaveObject.from_wave_file("media/punch.wav")
+
             async def handle_stroke(msg: Message):
                 nonlocal nb_hits
 
                 coord = self._pad_grid.note_coordinate(msg.note)
                 if coord == (current_x, current_y):
+                    punch_sound.play()
                     nb_hits += 1
 
             [self._controller.bind_note_on(note, handle_stroke) for note in self._pad_grid.all_notes()]
