@@ -57,7 +57,7 @@ class WhackAMole:
                 self._controller.send_note_on(self._pad_grid.get_note(current_x, current_y))
 
                 # Add a random delay
-                delay = random.randint(-500, 200)
+                delay = random.randint(-100, 200)
                 await asyncio.sleep((self._base_delay + timedelta(milliseconds=delay)).total_seconds())
                 self._controller.send_note_off(self._pad_grid.get_note(current_x, current_y))
 
@@ -67,7 +67,7 @@ class WhackAMole:
 
                 sent_hits += 1
 
-                await asyncio.sleep(random.randint(1, 4))
+                await asyncio.sleep(random.randint(500, 2500) / 1000.)
 
         moles_thread = Thread(target=lambda: sync_loop(moles_loop))
         strokes_thread = Thread(target=lambda: sync_loop(strokes_loop))

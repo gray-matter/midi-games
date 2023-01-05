@@ -16,7 +16,7 @@ def main():
         snake = SnakeEffect(pad_grid, ctrl, 3, timedelta(seconds=0.2), 2)
         snake.play()
 
-        g = WhackAMole(pad_grid, ctrl, timedelta(seconds=0.5), 5)
+        g = WhackAMole(pad_grid, ctrl, timedelta(seconds=0.5), 10)
         print(g.play())
     finally:
         pad_grid.reset(ctrl)
