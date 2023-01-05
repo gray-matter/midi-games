@@ -26,17 +26,20 @@ class VerticalDirection(enum.Enum):
 
 
 class SnakeEffect:
-    def __init__(self, pad_grid: PadGrid, controller: MidiController, length: int, delay: timedelta):
+    def __init__(self, pad_grid: PadGrid, controller: MidiController, length: int, delay: timedelta, max_loops: int):
         self._pad_grid = pad_grid
         self._controller = controller
         self._length = length
         self._delay = delay
+        self._max_loops = max_loops
 
     def play(self):
         current_vector = (-1, 0, HorizontalDirection.RIGHT, VerticalDirection.DOWN)
         rings = deque(maxlen=self._length)
+        loops = 0
 
-        while True:
+        self._pad_grid.reset(self._controller)
+        while loops < self._max_loops:
             next_vector = self._next_position(current_vector[0], current_vector[1],
                                               current_vector[2], current_vector[3])
 
@@ -46,7 +49,12 @@ class SnakeEffect:
             rings.append(next_vector)
             self._controller.send_note_on(self._pad_grid.get_note(next_vector[0], next_vector[1]))
             current_vector = next_vector
-            time.sleep(self._delay.microseconds / 1000. / 1000.)
+            time.sleep(self._delay.total_seconds())
+
+            if current_vector[0] == 0 and current_vector[1] == 0:
+                loops += 1
+
+        self._pad_grid.reset(self._controller)
 
     def _next_position(self, x: int, y: int,
                        horizontal_direction: HorizontalDirection,

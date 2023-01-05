@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 from collections import defaultdict
+from threading import Event
 from typing import Optional, List, Callable, Coroutine
 
 import mido
@@ -48,8 +49,8 @@ class MidiController:
     def bind_control_change(self, control: int, callback: Callable[[mido.Message], Coroutine]):
         self._controls_bindings[control].append(callback)
 
-    async def receive(self):
-        while True:
+    async def receive(self, stop_event: Event):
+        while not stop_event.is_set():
             for msg in self._inport.iter_pending():
                 await self._dispatch(msg)
             await asyncio.sleep(0.1)
