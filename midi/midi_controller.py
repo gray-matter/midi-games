@@ -1,17 +1,25 @@
+import asyncio
 import logging
 import re
-from typing import List, Optional
+from collections import defaultdict
+from typing import Optional, List, Callable, Coroutine
 
 import mido
 from mido import Message
-from mido.backends.rtmidi import Input, Output
 
 
 class MidiController:
+    CONTROL_CHANGE = 'control_change'
+    NOTE_ON = 'note_on'
+    NOTE_OFF = 'note_on'
+
     def __init__(self, name_regex: re.Pattern):
-        self._outport: Optional[Output] = None
-        self._inport: Optional[Input] = None
+        self._controls_bindings = defaultdict(list)
+        self._outport = None
+        self._inport = None
+        self._midi_in = None
         self._name_regex = name_regex
+        self._note_on_bindings = defaultdict(list)
 
     def connect(self) -> bool:
         inport_name = self._find(mido.get_input_names())
@@ -24,6 +32,27 @@ class MidiController:
             self._outport = mido.open_output(outport_name)
 
         return self._inport and self._outport
+
+    def send_note_on(self, note: int):
+        msg = Message('note_on', note=note)
+        self._outport.send(msg)
+
+    def send_note_off(self, note: int):
+        msg = Message('note_off', note=note)
+        self._outport.send(msg)
+
+    # TODO: Programs mapping
+    def bind_note_on(self, note: int, callback: Callable[[mido.Message], Coroutine]):
+        self._note_on_bindings[note].append(callback)
+
+    def bind_control_change(self, control: int, callback: Callable[[mido.Message], Coroutine]):
+        self._controls_bindings[control].append(callback)
+
+    async def receive(self):
+        while True:
+            for msg in self._inport.iter_pending():
+                await self._dispatch(msg)
+            await asyncio.sleep(0.1)
 
     def _find(self, available: List[str]) -> Optional[str]:
         matching = [dev_name for dev_name in set(available) if self._name_regex.search(dev_name)]
@@ -39,10 +68,14 @@ class MidiController:
 
         return matching[0]
 
-    def note_on(self, note: int):
-        msg = Message('note_on', note=note)
-        self._outport.send(msg)
+    async def _dispatch(self, msg: mido.Message):
+        bindings = []
 
-    def note_off(self, note: int):
-        msg = Message('note_off', note=note)
-        self._outport.send(msg)
+        if msg.type == MidiController.NOTE_ON:
+            bindings = self._note_on_bindings[msg.note]
+        elif msg.is_cc():
+            bindings = self._controls_bindings[msg.control]
+
+        logging.debug(f'Found {len(bindings)} bindings')
+        for binding in bindings:
+            await binding(msg)

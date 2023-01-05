@@ -4,6 +4,7 @@ from collections import deque
 from datetime import timedelta
 
 from grid.pad_grid import PadGrid
+from midi.midi_controller import MidiController
 
 
 class HorizontalDirection(enum.Enum):
@@ -25,8 +26,9 @@ class VerticalDirection(enum.Enum):
 
 
 class SnakeEffect:
-    def __init__(self, pad_grid: PadGrid, length: int, delay: timedelta):
+    def __init__(self, pad_grid: PadGrid, controller: MidiController, length: int, delay: timedelta):
         self._pad_grid = pad_grid
+        self._controller = controller
         self._length = length
         self._delay = delay
 
@@ -39,10 +41,10 @@ class SnakeEffect:
                                               current_vector[2], current_vector[3])
 
             if len(rings) == rings.maxlen:
-                self._pad_grid.light_off(rings[0][0], rings[0][1])
+                self._controller.send_note_off(self._pad_grid.get_note(rings[0][0], rings[0][1]))
 
             rings.append(next_vector)
-            self._pad_grid.light_on(next_vector[0], next_vector[1])
+            self._controller.send_note_on(self._pad_grid.get_note(next_vector[0], next_vector[1]))
             current_vector = next_vector
             time.sleep(self._delay.microseconds / 1000. / 1000.)
 
